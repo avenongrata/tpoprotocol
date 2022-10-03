@@ -1,0 +1,51 @@
+destdir = ../app_dir/lib
+target  = liblogger.so
+
+cflags   = -pipe -O2 -Wall -Wextra -fPIC
+cxxflags = -std=gnu++1z $cflags
+lflags   = -Wl,-O1 -shared -Wl,-soname,$target
+
+incpath  = -I. -I../ -I./p7 -I./config-library/
+libs     = -L../app_dir/lib/
+
+sdk = /opt/radiomodule-sdk/bin/arm-linux-
+
+#==============================================================================
+
+rule mkf
+  command = ninja -C $in
+
+rule rmf
+  command = ninja -C $in clean
+  
+#==============================================================================
+
+rule cc
+  command = ${sdk}gcc -c $in -o $out $cflags $incpath $libs
+
+rule xx
+  command = ${sdk}g++ -c $in -o $out $cxxflags $incpath $libs
+
+rule ln
+  command = ${sdk}g++ $in -o $out $lflags $incpath $libs
+
+rule cl
+  command = ninja clean_pseven && ninja -t clean 
+  
+rule all
+  command = ninja build_pseven && ninja $destdir/$target
+
+#==============================================================================
+
+# P7 library
+build build_pseven  : mkf p7
+build clean_pseven  : rmf p7
+
+# Build logger
+build logger.o     : xx logger.cpp
+build $destdir/$target : ln logger.o
+
+build make  : all
+build clean : cl
+
+default make

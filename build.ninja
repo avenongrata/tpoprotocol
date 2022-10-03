@@ -1,0 +1,88 @@
+destdir = ./app_dir/bin
+target  = tpoprotocol
+
+sdk     = /opt/radiomodule-sdk/bin/arm-linux-
+sdklibs = /opt/radiomodule-sdk/arm-buildroot-linux-musleabihf/lib
+
+cflags   = -g -O2 -Wall -Wextra
+cxxflags = -std=gnu++1z $cflags
+lflags   = -g -std=gnu++1z -O1
+
+incpath  = -I. -I../
+libs     = -L./app_dir/lib/ -L$sdklibs -lnetsock -lglobal -lapi -lapp -ldevice -lmemory -lpthread -lp7 -llogger -lconfig
+
+#==============================================================================
+
+rule makes
+  command = ninja -f build.ninja $in
+
+rule mkf
+  command = ninja -C $in
+
+rule rmf
+  command = ninja -C $in clean
+
+#==============================================================================
+
+rule cc
+  command = ${sdk}gcc -c $in -o $out $cflags $incpath $libs
+
+rule xx
+  command = ${sdk}g++ -c $in -o $out $cxxflags $incpath $libs
+
+rule ln
+  command = ${sdk}g++ -D GIT_HASH=$hash_commit $in -o $out $lflags $incpath $libs
+
+rule cl
+  command = ninja -t clean && ninja rm_libs
+
+rule all
+  command =  ninja make_logger && ninja make_baselibs && ninja make_libs && ninja $destdir/$target
+  
+#==============================================================================
+# Make libs
+
+build mk_logger   : mkf logger-library
+build mk_api      : mkf api-library
+build mk_app      : mkf app-library
+build mk_device   : mkf device-library
+build mk_global   : mkf global-module
+build mk_memory   : mkf memory-library
+build mk_netsock  : mkf netsock-library
+build mk_config   : mkf config-library
+
+# Delete libs
+build rm_logger   : rmf logger-library
+build rm_api      : rmf api-library
+build rm_app      : rmf app-library
+build rm_device   : rmf device-library
+build rm_global   : rmf global-module
+build rm_memory   : rmf memory-library
+build rm_netsock  : rmf netsock-library
+build rm_config   : rmf config-library
+
+#==============================================================================
+# Make program
+
+build udpserver.o   : xx udpserver.cpp
+build protocol.o    : xx protocol.cpp
+build device.o      : xx device.cpp
+build statistic.o   : xx statistic.cpp
+build timers.o      : xx timers.cpp
+build core.o        : xx core.cpp
+build common.o      : xx common.cpp
+build devtree.o     : xx devtree.cpp
+build devapi.o      : xx devapi.cpp
+
+#==============================================================================
+
+build make_logger      : makes mk_logger
+build make_baselibs    : makes mk_global mk_api mk_app mk_config
+build make_libs        : makes mk_device mk_memory mk_netsock
+build $destdir/$target : ln udpserver.o protocol.o device.o statistic.o timers.o core.o common.o devtree.o devapi.o main.cpp
+
+build rm_libs   : makes rm_logger rm_api rm_app rm_device rm_global rm_memory rm_netsock rm_config
+build clean     : cl
+
+build make  : all
+default make

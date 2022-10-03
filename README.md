@@ -1,2 +1,3 @@
-# tpoprotocol
-Backend server for interaction with TPO
+# ipcore-statistic
+
+Модуль взаимодействия с ТПО
