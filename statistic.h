@@ -100,9 +100,9 @@ private:
     // Добавить регион устройства.
     void m_addReg(dev::region_t & reg, std::stringstream & data);
     // Добавить частоту считывания.
-    void m_addFreqToPkg(std::stringstream & pkg, timers::ticks_t & ticks);
+    std::string m_getFreq(timers::ticks_t & ticks);
     // Добавить адрес в HEX формате в пакет.
-    void m_addAddrToPkg(std::stringstream & pkg, uint32_t & addr);
+    std::string m_getHexAddr(uint32_t & addr);
     // Добавить прочитанные данные.
     void m_addData(std::stringstream & devsData, std::stringstream & apisData);
     // Добавить данные устройств.

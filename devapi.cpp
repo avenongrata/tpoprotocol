@@ -33,29 +33,26 @@ DevApi::~DevApi()
 
 bool DevApi::read(std::stringstream & data)
 {
-    ssize_t readBytes;
-
-    // Когда файл не был открыт.
-    if (!m_opened)
-    {
-        LOGGER_ERROR("File wasn't opened");
+    // Проверка файла.
+    if (!m_check(true))
         return false;
-    }
-
-    // Проверить разрешения на чтение в файл.
-    if (m_perms != "r+" && m_perms != "r")
-    {
-        LOGGER_ERROR("The file is opened without the possibility to read");
-        return false;
-    }
 
     // Прочитать данные из файла.
-    readBytes = fread(m_buffer, 1, m_bufSize, m_fd);
+    auto readBytes = fread(m_buffer, 1, m_bufSize, m_fd);
     // Переместиться в начало файла.
     fseek(m_fd, 0, SEEK_SET);
 
-    // Сохранить данные в пакет.
-    for (ssize_t i = 0; i < readBytes - 1; i++)
+    // Если не было считанных данных.
+    if (!readBytes)
+    {
+        std::stringstream msg;
+        msg << "File \"" << m_path << "\" is empty";
+        LOGGER_ERROR(msg.str());
+        return false;
+    }
+
+    // Сохранить данные в пакет (без символа переноса).
+    for (size_t i = 0; i < readBytes - 1; i++)
         data << m_buffer[i];
 
     return true;
@@ -65,19 +62,9 @@ bool DevApi::read(std::stringstream & data)
 
 bool DevApi::write(std::string & apiVal)
 {
-    // Когда файл не был открыт.
-    if (!m_opened)
-    {
-        LOGGER_ERROR("File wasn't opened");
+    // Проверка файла.
+    if (!m_check(false))
         return false;
-    }
-
-    // Проверить разрешения на запись в файл.
-    if (m_perms != "r+" && m_perms != "w")
-    {
-        LOGGER_ERROR("The file is opened without the possibility to write");
-        return false;
-    }
 
     // Записать данные в файл.
     fwrite(apiVal.c_str(), 1, apiVal.size(), m_fd);
@@ -98,12 +85,12 @@ bool DevApi::m_open()
     m_fd = fopen(m_path.c_str(), m_perms.c_str());
     if (m_fd == NULL)
     {
-        msg << "Error opening /dev/mem in \"" << m_perms << "\" mode ("
+        msg << "Error opening \"" << m_path << "\" in " << m_perms << " mode ("
             << errno << ") : " << strerror(errno);
         LOGGER_ERROR(msg.str());
         return false;
     }
-    msg << "Successfully opened /dev/mem in \"" << m_perms << "\" mode";
+    msg << "Successfully opened \"" << m_path << "\" in " << m_perms << " mode";
     LOGGER_INFO(msg.str());
 
     return true;
@@ -126,6 +113,40 @@ void DevApi::m_getFilePerms()
     m_perms = (tmpPerms == "rw") ? "r+" : tmpPerms;
 }
 
+//-----------------------------------------------------------------------------
+
+bool DevApi::m_check(bool read)
+{
+    // Когда файл не был открыт.
+    if (!m_opened)
+    {
+        std::stringstream msg;
+        msg << "File \"" << m_path << "\" wasn't opened";
+        LOGGER_ERROR(msg.str());
+        return false;
+    }
+    // Проверить разрешения на чтение файла.
+    if (m_perms != "r+" && m_perms != "r" && read)
+    {
+        std::stringstream msg;
+        msg << "File \"" << m_path << "\" is opened without the "
+            << "possibility to read";
+        LOGGER_ERROR(msg.str());
+        return false;
+    }
+    // Проверить разрешения на запись в файл.
+    if (m_perms != "r+" && m_perms != "w" && !read)
+    {
+        std::stringstream msg;
+        msg << "File \"" << m_path << "\" is opened without the "
+            << "possibility to write";
+        LOGGER_ERROR(msg.str());
+        return false;
+    }
+
+    return true;
+}
+
 //=============================================================================
 //=============================================================================
 
@@ -145,18 +166,21 @@ DevsApi::~DevsApi()
 
 bool DevsApi::read(std::stringstream & pkg)
 {
+    std::stringstream tmpData;
     std::lock_guard<std::mutex> lock(m_apisMutex);
-    for (auto it = m_apis.begin(); it != m_apis.end(); )
+    for (auto it = m_apis.begin(); it != m_apis.end(); it++)
     {
-        pkg << (*it)->first.second << sep::dataSep;
-        if (!(*it)->second->read(pkg))
-        {
-            pkg.str(std::string());
-            return false;
-        }
+        if (!(*it)->second->read(tmpData))
+            continue;
 
-        if (++it != m_apis.end())
+        if (pkg.str().size())
             pkg << sep::dataSep;
+
+        pkg << (*it)->first.second << sep::dataSep;
+        pkg << tmpData.str();
+
+        // Очистить пакет.
+        tmpData.str(std::string());
     }
 
     return true;

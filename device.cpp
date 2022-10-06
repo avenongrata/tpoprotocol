@@ -15,7 +15,6 @@ namespace dev
 Device::Device(devInfo_t & dev)
     : m_fd(-1), m_dev(dev), m_mapBase(nullptr), m_mappedFlag(false)
 {
-    LOGGER_DEBUG("called");
     // Получить смещение на странице памяти.
     m_offset = (unsigned int)(m_dev.first & (m_pagesize - 1));
 
@@ -31,7 +30,6 @@ Device::Device(devInfo_t & dev)
 
 Device::~Device()
 {
-    LOGGER_DEBUG("called");
     // Прекратить отображение региона.
     if (m_mapBase != MAP_FAILED)
     {
@@ -50,7 +48,6 @@ Device::~Device()
 
 void Device::fillAddrs(region_t & region)
 {
-    LOGGER_DEBUG("called");
     // Заполнить регион адресами.
     for (unsigned int i = 0; i < m_dev.second; i++)
         region[i].first = m_dev.first + i * m_step;
@@ -175,7 +172,6 @@ bool Device::m_mmap()
 
 Devices::Devices(devInfo_t & dev)
 {
-    LOGGER_DEBUG("Called");
     // Создать устройство.
     m_createDev(dev);
 }
@@ -184,7 +180,6 @@ Devices::Devices(devInfo_t & dev)
 
 Devices::~Devices()
 {
-    LOGGER_DEBUG("Called");
     // Удалить устройства.
     m_deleteDevs();
     // Удалить регионы устройств.
@@ -233,7 +228,7 @@ bool Devices::add(devInfo_t & devInfo)
         LOGGER_DEBUG("Device exists");
         return false;
     }
-    LOGGER_DEBUG("Device ins't exists");
+    LOGGER_DEBUG("Device ins't exist");
 
     // Создать и добавить устройство к общему пулу.
     m_createDev(devInfo);
@@ -310,8 +305,6 @@ bool Devices::isActive()
 
 void Devices::m_createDev(devInfo_t & devInfo)
 {
-    LOGGER_DEBUG("called");
-
     m_dev_t * devData = new m_dev_t;
     devData->dev = new Device(devInfo);
     devData->region = new region_t;

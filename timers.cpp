@@ -1,5 +1,6 @@
 #include <iostream>
 #include <thread>
+#include <math.h>
 
 #include "timers.h"
 
@@ -9,8 +10,8 @@ namespace timers
 
 //=============================================================================
 
-Tick::Tick(sleepTime_t time)
-    : m_sleepTime(time), m_curTick(1)
+Tick::Tick()
+    : m_curTick(1)
 {}
 
 //-----------------------------------------------------------------------------
@@ -18,7 +19,7 @@ Tick::Tick(sleepTime_t time)
 Tick & Tick::operator++()
 {
     m_curTick++;
-    if (m_curTick > g_maxTicks)
+    if (m_curTick > m_maxTickCnt)
         m_curTick = 1;
 
     return *this;
@@ -41,15 +42,25 @@ bool Tick::isNow(ticks_t & jiffy)
 
 //-----------------------------------------------------------------------------
 
-ticks_t hzToTicks(hz_t & hz)
+ticks_t Tick::hzToTicks(hz_t & hz)
 {
     if (hz < 0)
         return 0;
 
-    if (hz <= g_maxTicks)
-        return g_maxTicks / hz;
+    if (hz <= m_maxTicks)
+        return m_maxTicks / hz;
     else
         return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+hz_t Tick::ticksToHz(ticks_t & ticks)
+{
+    auto hz = hz_t(m_maxTicks) / ticks;
+    // Максимальное количество знаков после запятой - 1.
+    double f = pow(10, 2);
+    return int(hz*f) / f;
 }
 
 //-----------------------------------------------------------------------------
@@ -61,9 +72,9 @@ void Tick::sleep()
 
 //-----------------------------------------------------------------------------
 
-hz_t ticksToHz(ticks_t & ticks)
+hz_t strToHz(std::string & data)
 {
-    return g_maxTicks / ticks;
+    return stod(data);
 }
 
 //=============================================================================

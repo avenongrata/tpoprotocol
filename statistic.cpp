@@ -13,7 +13,7 @@ namespace statistic
 //=============================================================================
 
 Statistic::Statistic(std::condition_variable * notify)
-    : m_pkg(notify), m_timer(timers::g_sleepTime), m_activated(false)
+    : m_pkg(notify), m_activated(false)
 {}
 
 //-----------------------------------------------------------------------------
@@ -40,7 +40,7 @@ Statistic::~Statistic()
 bool Statistic::addDev(dev::devInfo_t & dev, timers::hz_t hz)
 {
     // Преобразовать Гц в тики.
-    auto ticks = timers::hzToTicks(hz);
+    auto ticks = m_timer.hzToTicks(hz);
     // Нельзя добавить устройство с таким количеством тиков.
     if (!ticks)
         return false;
@@ -48,7 +48,12 @@ bool Statistic::addDev(dev::devInfo_t & dev, timers::hz_t hz)
     std::lock_guard<std::mutex> lock(m_dataMutex);
     // Проверить можно ли устройство добавить в пул.
     if (m_isDevExist(dev.first))
+    {
+        std::stringstream msg;
+        msg << "Device " << m_getHexAddr(dev.first) << " is already exist";
+        LOGGER_DEBUG(msg.str());
         return false;
+    }
 
     // Добавить устройство в пул.
     m_addDev(dev, ticks);
@@ -62,7 +67,7 @@ bool Statistic::addDev(dev::devInfo_t & dev, timers::hz_t hz)
 bool Statistic::addFile(dev::file_t & file, timers::hz_t hz)
 {
     // Преобразовать Гц в тики.
-    auto ticks = timers::hzToTicks(hz);
+    auto ticks = m_timer.hzToTicks(hz);
     // Нельзя добавить файл с таким количеством тиков.
     if (!ticks)
         return false;
@@ -70,7 +75,12 @@ bool Statistic::addFile(dev::file_t & file, timers::hz_t hz)
     std::lock_guard<std::mutex> lock(m_dataMutex);
     // Проверить можно ли добавить файл API в пул.
     if (m_isFileExist(file))
+    {
+        std::stringstream msg;
+        msg << "File " << file.second << " is already exist";
+        LOGGER_DEBUG(msg.str());
         return false;
+    }
 
     // Добавить файл API в пул.
     m_addFile(file, ticks);
@@ -127,10 +137,10 @@ void Statistic::getActiveDevs(std::stringstream & pkg)
         auto devs = it->second->getActive();
         for (auto dev = devs.begin(); dev != devs.end(); )
         {
-            m_addAddrToPkg(pkg, dev->first);
+            pkg << m_getHexAddr(dev->first);
             pkg << sep::dataSep << std::dec << dev->second << sep::dataSep;
             // Добавить частоту считывания в пакет.
-            m_addFreqToPkg(pkg, it->first);
+            pkg << m_getFreq(it->first);
 
             if (++dev != devs.end())
                 pkg << sep::dataSep;
@@ -153,7 +163,7 @@ void Statistic::getActiveFiles(std::stringstream & pkg)
         {
             pkg << file->second << sep::dataSep;
             // Добавить частоту считывания в пакет.
-            m_addFreqToPkg(pkg, it->first);
+            pkg << m_getFreq(it->first);
 
             if (++file != files.end())
                 pkg << sep::dataSep;
@@ -295,7 +305,8 @@ void Statistic::m_doStat(Statistic * stat)
         // Увеличить количество пройденных тиков.
         ++stat->m_timer;
     }
-    std::cout << "Statistics parsing thread ended" << std::endl;
+    stat->log.trace(__FILE__, EP7TRACE_LEVEL_INFO, (tUINT16)__LINE__,
+                    __FUNCTION__, "Statistics parsing thread stopped");
 }
 
 //-----------------------------------------------------------------------------
@@ -466,16 +477,22 @@ void Statistic::m_addFile(dev::file_t & file, timers::ticks_t & ticks)
 
 //-----------------------------------------------------------------------------
 
-void Statistic::m_addFreqToPkg(std::stringstream & pkg, timers::ticks_t & ticks)
+std::string Statistic::m_getFreq(timers::ticks_t & ticks)
 {
-    pkg << std::dec << timers::ticksToHz(ticks);
+    std::stringstream pkg;
+    pkg << m_timer.ticksToHz(ticks);
+
+    return pkg.str();
 }
 
 //-----------------------------------------------------------------------------
 
-void Statistic::m_addAddrToPkg(std::stringstream & pkg, uint32_t & addr)
+std::string Statistic::m_getHexAddr(uint32_t & addr)
 {
+    std::stringstream pkg;
     pkg << "0x" << std::setfill('0') << std::setw(8) << std::hex << addr;
+
+    return pkg.str();
 }
 
 //-----------------------------------------------------------------------------
@@ -566,10 +583,6 @@ void Statistic::m_addApisData(std::stringstream & apisData)
         if (!m_timer.isNow(it->first))
             continue;
 
-        // Добавить разделитель для файла API.
-        if (apisData.str().size())
-            apisData << sep::dataSep;
-
         // Прочитать данные из устройств.
         it->second->read(apisData);
     }
@@ -602,9 +615,9 @@ void Statistic::m_addReg(dev::region_t & reg, std::stringstream & data)
 {
     for (auto it = reg.begin(); it != reg.end(); )
     {
-        m_addAddrToPkg(data, it->first);
+        data << m_getHexAddr(it->first);
         data << sep::dataSep;
-        m_addAddrToPkg(data, it->second);
+        data << m_getHexAddr(it->second);
 
         if (++it != reg.end())
             data << sep::dataSep;

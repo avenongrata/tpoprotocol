@@ -69,6 +69,8 @@ void TpoProtocol::m_parsePkg()
 {
     // Удалить все пробелы из сообщения.
     m_msg.erase(remove(m_msg.begin(), m_msg.end(), ' '), m_msg.end());
+    // Удалить все переносы новой строки из сообщения.
+    m_msg.erase(remove(m_msg.begin(), m_msg.end(), '\n'), m_msg.end());
 
     std::string dMsg = "Request: " + m_msg;
     LOGGER_INFO(dMsg);
@@ -497,7 +499,7 @@ bool TpoProtocol::m_checkDev(dev::devInfo_t & dev)
 
 timers::hz_t TpoProtocol::m_getUpdateHz(std::string & data)
 {
-    return std::stol(data);
+    return timers::strToHz(data);
 }
 
 //-----------------------------------------------------------------------------
@@ -641,10 +643,11 @@ bool TpoProtocol::m_isGetRequestCorrect(std::vector<std::string> & request)
             return false;
 
         // Проверить является ли cледующий параметр числом.
-        request[i+1].erase(remove_if(request[i+1].begin(),
-                           request[i+1].end(), isspace), request[i+1].end());
-        if (!std::all_of(request[i+1].begin(), request[i+1].end(), ::isdigit))
+        if (!std::all_of(request[i+1].begin(), request[i+1].end(),
+                         [](char i) { return (std::isdigit(i) || i == '.'); }))
+        {
             return false;
+        }
     }
 
     return true;

@@ -8,18 +8,23 @@
 
 #include "device.h"
 #include "logger-library/logger.h"
+#include "config-library/iiniparams.h"
+#include "config-library/ciniparser.h"
 
 //-----------------------------------------------------------------------------
 
 namespace devtree
 {
 
+// Для обозначения имени файла.
+typedef std::string file_t;
+
 //=============================================================================
 
 // CPU (int(answer['CPU_temp']) * 503.975)/4096) - 273.15
 
 // Определен ниже.
-class DriverApi;
+class Api;
 
 //-----------------------------------------------------------------------------
 
@@ -51,6 +56,11 @@ private:
 
     //-------------------------------------------------------------------------
 
+    // Связка alias:path для системного устройства.
+    typedef std::pair<std::string, std::string> m_sysDev_t;
+
+    //-------------------------------------------------------------------------
+
     // Путь к загруженному дереву устройств.
     std::string m_path;
 
@@ -67,7 +77,7 @@ private:
         std::string dtbDevName;     // Имя устройства в DTB.
         m_values_t baseInfo;        // Файлы и их содержимое с базовой информацией.
         dev::devInfo_t dev;         // Базовый адрес устройства и количество регистров.
-        devtree::DriverApi * api;   // Для взаимодействия с API устройства.
+        Api * api;                  // Для взаимодействия с API устройства.
     };
 
     // Содержит вектор файлов с их значениями в дереве устройств.
@@ -79,6 +89,8 @@ private:
 
     // Заполнить вектор директорий информацией об устройствах на шине.
     void m_fillAmbaPlData();
+    // Заполнить вектор директорий информацией о системных устройствах на шине.
+    void m_fillSysData();
     // Заполнить базовый адрес устройства и его количество регистров.
     dev::devInfo_t m_fillDevsInfo(m_values_t & data);
 
@@ -103,7 +115,9 @@ private:
     //-------------------------------------------------------------------------
 
     // Получить API для устройства.
-    DriverApi * m_getDevApi(m_values_t & data);
+    Api * m_getDevApi(m_values_t & data);
+    // Получить API для системного устрйоства.
+    Api * m_getSysApi(m_sysDev_t & data);
     // Получить базовый адрес устройства.
     std::string m_getBaseAddr(std::vector<char> & data);
     // Получить количество регистров устройства.
@@ -112,46 +126,54 @@ private:
     std::string m_getFileName(const std::string & fullPath);
     // Получить все имена файлов и их содержимое в директории.
     m_values_t m_getAllInsideDir(const std::string & path);
+    // Получить адрес устройства из DTB.
+    std::string m_getAddr(std::string & reg);
+    // Получить преобразованный compatible из DTB.
+    std::string m_getCompatible(std::string & compatible);
+    // Получить путь к API устройства.
+    std::string m_getDevApiPath(std::string & compatible, std::string & addr);
+
+    //-------------------------------------------------------------------------
+
+    // Чтение параметров из конфига.
+    bool m_readConfig(std::vector<m_sysDev_t> & data);
+    // Создать связку alias:path для системных устройств.
+    void m_fillSysDev(cfg::ini::iniParams_t & params,
+                      std::vector<std::string> & keys,
+                      std::vector<m_sysDev_t> & sysDevs);
 };
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-class DriverApi
+class Api
 {
 public:
 
-    DriverApi(std::string compatible, std::string addr);
+    // Путь к расположению API устройства.
+    Api(file_t path);
 
     //-------------------------------------------------------------------------
 
     // Вернуть функционал API.
-    std::vector<std::string> getApi();
+    std::vector<file_t> getApi();
     // Вернуть полный путь к файлу API.
-    std::string getPath(std::string & apiName);
+    file_t getPath(file_t & apiName);
 
 private:
 
     // Класс логирования.
     logger::Logger log;
 
-    // Имя файла.
-    typedef std::string m_file_t;
-
-    // Путь к расположению файлов.
-    std::string m_apiPath;
-    // Имя файла в API драйвера.
-    std::unordered_set<m_file_t> m_apiFiles;
+    // Путь к расположению API файлов.
+    file_t m_path;
+    // Имя API файла в драйвере.
+    std::unordered_set<file_t> m_files;
 
     //-------------------------------------------------------------------------
 
-    // Получить все файлы API устройства.
+    // Получить все файлы API драйвера.
     void m_getApiFiles();
-
-    //-------------------------------------------------------------------------
-
-    // Преобразовать compatible в используемый вид.
-    std::string m_createAvailableCompatible(std::string compatible);
 
     //-------------------------------------------------------------------------
 
