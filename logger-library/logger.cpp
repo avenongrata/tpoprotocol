@@ -121,7 +121,7 @@ void LogTemplate::trace(IP7_Trace::hModule module, const char * file,
         msg += "\033[0m";
 
     m_pTrace->Trace(0, level, module, line, file, fun,
-                    TM(msg.c_str()));
+                    TM("%s"), msg.c_str());
 }
 
 //-----------------------------------------------------------------------------

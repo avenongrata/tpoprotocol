@@ -167,7 +167,7 @@ DevsApi::~DevsApi()
 bool DevsApi::read(std::stringstream & pkg)
 {
     std::stringstream tmpData;
-    std::lock_guard<std::mutex> lock(m_apisMutex);
+
     for (auto it = m_apis.begin(); it != m_apis.end(); it++)
     {
         if (!(*it)->second->read(tmpData))
@@ -190,8 +190,6 @@ bool DevsApi::read(std::stringstream & pkg)
 
 bool DevsApi::add(file_t & fileName)
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
-
     if (m_isExist(fileName))
         return false;
 
@@ -203,7 +201,6 @@ bool DevsApi::add(file_t & fileName)
 
 bool DevsApi::remove(file_t & fileName)
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
     for (auto it = m_apis.begin(); it != m_apis.end(); it++)
     {
         if (fileName == (*it)->first)
@@ -221,8 +218,6 @@ bool DevsApi::remove(file_t & fileName)
 
 void DevsApi::removeAll()
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
-
     for (auto it = m_apis.begin(); it != m_apis.end(); it++)
         m_deleteFile(*it);
 
@@ -235,7 +230,6 @@ files_t DevsApi::getActive()
 {
     files_t data;
 
-    std::lock_guard<std::mutex> lock(m_apisMutex);
     for (auto it = m_apis.begin(); it != m_apis.end(); it++)
         data.push_back((*it)->first);
 
@@ -246,7 +240,6 @@ files_t DevsApi::getActive()
 
 bool DevsApi::isExist(file_t & fileName)
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
     return m_isExist(fileName);
 }
 
@@ -254,7 +247,6 @@ bool DevsApi::isExist(file_t & fileName)
 
 bool DevsApi::isActive()
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
     return bool(m_apis.size());
 }
 
@@ -293,7 +285,6 @@ void DevsApi::m_deleteFile(api_t * api)
 
 void DevsApi::m_deleteFiles()
 {
-    std::lock_guard<std::mutex> lock(m_apisMutex);
     auto apisCnt = m_apis.size();
     for (int i = (int) apisCnt - 1; i >= 0; i--)
     {

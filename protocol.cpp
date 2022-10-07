@@ -124,6 +124,13 @@ void TpoProtocol::m_handleGet()
 
 void TpoProtocol::m_handleDel()
 {
+    // Если запрос  DEL без параметров - отправить сообщение о неправильной команде.
+    if (!m_body.size())
+    {
+        m_sendBadCmd();
+        return;
+    }
+
     auto data = splitString(m_body, sep::dataSep);
 
     jobData_t tmp;
@@ -178,6 +185,17 @@ void TpoProtocol::m_handleDtb()
 
 //-----------------------------------------------------------------------------
 
+void TpoProtocol::m_handleStop()
+{
+    // Остановить сбор статистики и отправить пакет об остановленных устройствах/API.
+    m_response = status["STOPPED"];
+    m_getActive();
+    m_statistic->stopStatistic();
+    m_sendResponse();
+}
+
+//-----------------------------------------------------------------------------
+
 void TpoProtocol::m_handleKA()
 {
     LOGGER_INFO("Keep-Alive");
@@ -227,7 +245,7 @@ void TpoProtocol::m_parseCmd()
     //  Остановить сбор любой статистики
     if (m_cmd == "stop")
     {
-        m_stopStatistic();
+        m_handleStop();
     }
 }
 
@@ -266,16 +284,6 @@ void TpoProtocol::m_sendSuccess(jobData & data)
 {
     m_response = status["SUCCESS"];
     m_response += m_preparePkgData(data);
-    m_sendResponse();
-}
-
-//-----------------------------------------------------------------------------
-
-void TpoProtocol::m_stopStatistic()
-{
-    m_response = status["STOPPED"];
-    m_getActive();
-    m_statistic->stopStatistic();
     m_sendResponse();
 }
 

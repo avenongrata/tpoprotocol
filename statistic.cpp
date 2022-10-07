@@ -178,7 +178,7 @@ void Statistic::getActiveFiles(std::stringstream & pkg)
 
 bool Statistic::readDevOnce(dev::devInfo_t & devInfo, std::stringstream & data)
 {
-    dev::Device dev{devInfo};
+    dev::Device dev {devInfo};
     dev::region_t region;
 
     // Задать размер региона.
@@ -199,7 +199,7 @@ bool Statistic::readDevOnce(dev::devInfo_t & devInfo, std::stringstream & data)
 
 bool Statistic::readApiOnce(dev::file_t & fileInfo, std::stringstream & data)
 {
-    dev::DevApi api{fileInfo.first};
+    dev::DevApi api {fileInfo.first};
 
     data << fileInfo.second << sep::dataSep;
     // Прочитать файл API.

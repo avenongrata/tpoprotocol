@@ -59,7 +59,7 @@ hz_t Tick::ticksToHz(ticks_t & ticks)
 {
     auto hz = hz_t(m_maxTicks) / ticks;
     // Максимальное количество знаков после запятой - 1.
-    double f = pow(10, 2);
+    double f = pow(10, 1);
     return int(hz*f) / f;
 }
 

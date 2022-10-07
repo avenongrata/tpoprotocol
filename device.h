@@ -6,7 +6,6 @@
 #include <iostream>
 #include <unistd.h>
 #include <vector>
-#include <mutex>
 #include <list>
 
 #include "logger-library/logger.h"
@@ -138,8 +137,6 @@ private:
 
     // Вектор устройств.
     devs_t m_devs;
-    // Мьютекс для работы с устройствами.
-    std::mutex m_devsMutex;
     // Вектор регионов устройств.
     devsRegion_t m_regions;
 

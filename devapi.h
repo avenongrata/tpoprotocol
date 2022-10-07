@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <iostream>
 #include <vector>
-#include <mutex>
 #include <cstdio>
 
 #include "logger-library/logger.h"
@@ -117,8 +116,6 @@ private:
 
     // Вектор файлов.
     apis_t m_apis;
-    // Мьютекс для работы с файлами.
-    std::mutex m_apisMutex;
 
     //-------------------------------------------------------------------------
 

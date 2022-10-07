@@ -220,8 +220,6 @@ bool Devices::m_isExist(uint32_t & addr)
 
 bool Devices::add(devInfo_t & devInfo)
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
-
     // Проверить есть ли такое устройство в пуле.
     if (m_isExist(devInfo.first))
     {
@@ -239,8 +237,6 @@ bool Devices::add(devInfo_t & devInfo)
 
 bool Devices::remove(uint32_t & addr)
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
-
     for (auto it = std::begin(m_devs); it != std::end(m_devs); it++)
     {
         if (addr == (*it)->devInfo.first)
@@ -258,8 +254,6 @@ bool Devices::remove(uint32_t & addr)
 
 void Devices::removeAll()
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
-
     for (auto it = std::begin(m_devs); it != std::end(m_devs); it++)
         m_deleteDev(*it);
 
@@ -274,7 +268,6 @@ devsInfo_t Devices::getActive()
     // Список активных устройств.
     devsInfo_t devs;
 
-    std::lock_guard<std::mutex> lock(m_devsMutex);
     for (auto it = m_devs.begin(); it != m_devs.end(); it++)
     {
         devInfo.first = (*it)->devInfo.first;
@@ -289,7 +282,6 @@ devsInfo_t Devices::getActive()
 
 bool Devices::isExist(uint32_t & addr)
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
     return m_isExist(addr);
 }
 
@@ -297,7 +289,6 @@ bool Devices::isExist(uint32_t & addr)
 
 bool Devices::isActive()
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
     return bool(m_devs.size());
 }
 
@@ -330,8 +321,6 @@ void Devices::m_deleteDev(m_dev_t * devInfo)
 
 void Devices::m_deleteDevs()
 {
-    std::lock_guard<std::mutex> lock(m_devsMutex);
-
     auto devsCnt = m_devs.size();
     // Удалить устройства, начиная с конца.
     for (int i = (int) devsCnt - 1; i >= 0; i--)
@@ -352,12 +341,9 @@ void Devices::m_deleteRegions()
 
 bool Devices::m_readRegions()
 {
-    bool ret;
-
-    std::lock_guard<std::mutex> lock(m_devsMutex);
     for (unsigned int i = 0; i < m_devs.size(); i++)
     {
-        ret = m_devs[i]->dev->read(*m_devs[i]->region);
+        auto ret = m_devs[i]->dev->read(*m_devs[i]->region);
         if (!ret)
             return false;
     }
@@ -371,7 +357,6 @@ void Devices::m_getRegions()
 {
     m_regions.resize(0);
 
-    std::lock_guard<std::mutex> lock(m_devsMutex);
     for (unsigned int i = 0; i < m_devs.size(); i++)
     {
         region_t tmpRegion = *m_devs[i]->region;
