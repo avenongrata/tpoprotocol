@@ -21,6 +21,7 @@ TpoProtocol::TpoProtocol()
 
 void TpoProtocol::init()
 {
+    m_jobError = false;
     m_pkg.set("", m_pkgSize);
     // Создать сервер.
     m_udp.start();
@@ -113,6 +114,13 @@ void TpoProtocol::m_handleGet()
     for (unsigned long i = 0; i < data.size(); i+=2)
     {
         tmp = m_getJob(data[i], data[i+1]);
+        // Если произошла ошибка при обработке работы.
+        if (m_jobError)
+        {
+            m_sendBadCmd();
+            continue;
+        }
+
         if (tmp.device) // Добавить устройство.
             m_addDev(tmp);
         else            // Добавить файл API.
@@ -124,7 +132,7 @@ void TpoProtocol::m_handleGet()
 
 void TpoProtocol::m_handleDel()
 {
-    // Если запрос  DEL без параметров - отправить сообщение о неправильной команде.
+    // Если запрос DEL без параметров - отправить сообщение о неправильной команде.
     if (!m_body.size())
     {
         m_sendBadCmd();
@@ -132,11 +140,17 @@ void TpoProtocol::m_handleDel()
     }
 
     auto data = splitString(m_body, sep::dataSep);
-
     jobData_t tmp;
     for (auto it = data.begin(); it != data.end(); it++)
     {
         tmp = m_delJob(*it);
+        // Если произошла ошибка при обработке работы.
+        if (m_jobError)
+        {
+            m_sendBadCmd();
+            continue;
+        }
+
         if (tmp.device) // Удалить устройство.
             m_delDev(tmp);
         else            // Удалить файл API.
@@ -150,10 +164,24 @@ void TpoProtocol::m_handleSet()
 {
     auto data = splitString(m_body, sep::dataSep);
 
+    // Проверить правильность команды SET.
+    if (!m_isSetRequestCorrect(data))
+    {
+        m_sendBadCmd();
+        return;
+    }
+
     jobData_t tmp;
     for (unsigned long i = 0; i < data.size(); i+=2)
     {
         tmp = m_setJob(data[i], data[i+1]);
+        // Если произошла ошибка при обработке работы.
+        if (m_jobError)
+        {
+            m_sendBadCmd();
+            continue;
+        }
+
         if (tmp.device)     // Записать в устройство.
             m_setDev(tmp);
         else
@@ -258,6 +286,7 @@ void TpoProtocol::m_sendBadCmd()
     m_sendResponse();
 
     LOGGER_ERROR(m_response);
+    m_jobError = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -512,27 +541,44 @@ timers::hz_t TpoProtocol::m_getUpdateHz(std::string & data)
 
 //-----------------------------------------------------------------------------
 
-unsigned int TpoProtocol::m_getRegCnt(std::string & data)
+uint32_t TpoProtocol::m_getValue(std::string & data)
 {
-    return std::stol(data);
+    m_jobError = false;
+    std::string prefix = std::string (data.begin(), data.begin() + 2);
+    if (prefix == "0x" && std::all_of(data.begin() + 2, data.end(), [](char i)
+            { return std::isxdigit(i); }))
+    {
+        return strtoul(data.c_str(), NULL, 16);
+    }
+    else if (std::all_of(data.begin(), data.end(), [](char i)
+            { return std::isdigit(i); }))
+    {
+        return std::stol(data);
+    }
+
+    m_jobError = true;
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+uint32_t TpoProtocol::m_getRegCnt(std::string & data)
+{
+    return m_getValue(data);
 }
 
 //-----------------------------------------------------------------------------
 
 uint32_t TpoProtocol::m_getDevValue(std::string & data)
 {
-    std::string prefix = std::string (data.begin(), data.begin() + 2);
-    if (prefix == "0x")
-        return strtoul(data.c_str(), NULL, 16);
-    else
-        return std::stol(data);
+    return m_getValue(data);
 }
 
 //-----------------------------------------------------------------------------
 
 uint32_t TpoProtocol::m_getDevAddr(std::string & data)
 {
-    return strtoul(data.c_str(), NULL, 16);
+    return m_getValue(data);
 }
 
 //-----------------------------------------------------------------------------
@@ -663,12 +709,33 @@ bool TpoProtocol::m_isGetRequestCorrect(std::vector<std::string> & request)
 
 //-----------------------------------------------------------------------------
 
+bool TpoProtocol::m_isSetRequestCorrect(std::vector<std::string> & request)
+{
+    // Если запрос SET без параметров - отправить сообщение о неправильной команде.
+    if (!m_body.size())
+        return false;
+
+    // Нечетное количество - ошибка.
+    if (request.size() % 2)
+        return false;
+
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+
 TpoProtocol::jobData_t TpoProtocol::m_getJob(std::string & base,
                                              std::string & hz)
 {
     jobData_t jobData;
 
     auto data = splitString(base, sep::baseSep);
+    if (data.size() < 2)
+    {
+        m_jobError = true;
+        return jobData;
+    }
+
     // Работа с API.
     if (data[0].find('@') != std::string::npos)
     {
@@ -698,6 +765,11 @@ TpoProtocol::jobData_t TpoProtocol::m_delJob(std::string & base)
     {
         jobData.device = false;
         auto data = splitString(base, sep::baseSep);
+        if (data.size() < 2)
+        {
+            m_jobError = true;
+            return jobData;
+        }
         jobData.dtbDev = data[0];
         jobData.apiName = data[1];
     }
@@ -718,6 +790,12 @@ TpoProtocol::jobData_t TpoProtocol::m_setJob(std::string & base,
     jobData_t jobData;
 
     auto data = splitString(base, sep::baseSep);
+    if (data.size() < 2)
+    {
+        m_jobError = true;
+        return jobData;
+    }
+
     // Работа с API.
     if (data[0].find('@') != std::string::npos)
     {

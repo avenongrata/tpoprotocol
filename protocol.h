@@ -84,7 +84,7 @@ private:
         bool device;            // Если true, то это устройство.
 
         uint32_t addr;          // Содержит адрес устройства.
-        unsigned int regCnt;    // Количество регистров для считывания.
+        uint32_t regCnt;        // Количество регистров для считывания.
         uint32_t regVal;        // Значение для записи в регистр.
 
         std::string dtbDev;     // Для именя IP-Core в DTB.
@@ -158,10 +158,15 @@ private:
     // Получить информацию из запроса DTB об устройстве.
     jobData_t m_dtb(std::string & base);
 
+    // Для обозначения ошибки в функциях обратоки работы (для избежания дублирующего кода)
+    bool m_jobError;
+
     //-------------------------------------------------------------------------
 
     // Проверить правильность запроса GET.
     bool m_isGetRequestCorrect(std::vector<std::string> & request);
+    // Проверить правильность запроса SET.
+    bool m_isSetRequestCorrect(std::vector<std::string> & request);
     // Проверить существует ли устройство в дереве устройств.
     bool m_checkDev(dev::devInfo_t & dev);
 
@@ -169,8 +174,10 @@ private:
 
     // Получить частоту обновления для чтения устройств/API.
     timers::hz_t m_getUpdateHz(std::string & data);
+    // Получить число из строки.
+    uint32_t m_getValue(std::string & data);
     // Получить количество регистров для чтения.
-    unsigned int m_getRegCnt(std::string & data);
+    uint32_t m_getRegCnt(std::string & data);
     // Получить значение для записи в устройство.
     uint32_t m_getDevValue(std::string & data);
     // Получить адрес устройства.
