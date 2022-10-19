@@ -172,7 +172,7 @@ DevTree::m_values_t DevTree::m_getAllInsideDir(const std::string & path)
 
 std::string DevTree::m_getAddr(std::string & reg)
 {
-    auto data = splitString(reg, ',');
+    auto data = splitString(reg, sep::dataSep);
     // Удалить префикс 0x из адреса.
     auto addr = data[0].substr(2, 10);
 
